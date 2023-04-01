@@ -1,5 +1,10 @@
 import { Component, ViewChild } from '@angular/core';
-import { FormArray, FormControl, FormGroup } from '@angular/forms';
+import {
+  AbstractControl,
+  FormArray,
+  FormControl,
+  FormGroup,
+} from '@angular/forms';
 import { MessageService } from 'primeng/api';
 import { Table } from 'primeng/table';
 import { Observable, timer } from 'rxjs';
@@ -20,6 +25,23 @@ interface Product {
 interface SelectItem {
   label: string;
   value: string;
+}
+
+class CustomFormGroup extends FormGroup {
+  private readonly _id: string | number;
+  constructor(
+    controls: {
+      [key: string]: AbstractControl;
+    },
+    id: string | number
+  ) {
+    super(controls);
+    this._id = id;
+  }
+
+  get id(): string | number {
+    return this._id;
+  }
 }
 
 @Component({
@@ -78,15 +100,16 @@ export class AppComponent {
       { label: 'Low Stock', value: 'LOWSTOCK' },
       { label: 'Out of Stock', value: 'OUTOFSTOCK' },
     ];
+    console.log(this.formData);
   }
 
-  onRowEditInit(control: FormGroup) {
+  onRowEditInit(control: CustomFormGroup) {
     this.clonedProducts[control.get('id')?.value as any] = {
       ...control.value,
     };
   }
 
-  onRowEditSave(control: FormControl) {
+  onRowEditSave(control: CustomFormGroup) {
     if (control.value.price > 0) {
       delete this.clonedProducts[control.value.id];
       this.messageService.add({
@@ -114,18 +137,21 @@ export class AppComponent {
     const id = item?.id || Math.floor(Math.random() * 1000000);
     if (isEdit) this.tbl.editingRowKeys[id as string] = true;
     (this.formData.controls['products'] as FormArray).push(
-      new FormGroup({
-        id: new FormControl(id),
-        code: new FormControl(item?.code),
-        name: new FormControl(item?.name),
-        description: new FormControl(item?.description),
-        image: new FormControl(item?.image),
-        price: new FormControl(item?.price),
-        category: new FormControl(item?.category),
-        quantity: new FormControl(item?.quantity),
-        inventoryStatus: new FormControl(item?.inventoryStatus),
-        rating: new FormControl(item?.rating),
-      })
+      new CustomFormGroup(
+        {
+          id: new FormControl(id),
+          code: new FormControl(item?.code),
+          name: new FormControl(item?.name),
+          description: new FormControl(item?.description),
+          image: new FormControl(item?.image),
+          price: new FormControl(item?.price),
+          category: new FormControl(item?.category),
+          quantity: new FormControl(item?.quantity),
+          inventoryStatus: new FormControl(item?.inventoryStatus),
+          rating: new FormControl(item?.rating),
+        },
+        id
+      )
     );
   }
 
