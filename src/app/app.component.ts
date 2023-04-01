@@ -1,9 +1,11 @@
-import { Component, Type } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
+import { FormArray, FormControl, FormGroup } from '@angular/forms';
 import { MessageService } from 'primeng/api';
+import { Table } from 'primeng/table';
 import { Observable, timer } from 'rxjs';
 
 interface Product {
-  id: string;
+  id: string | number;
   code: string;
   name: string;
   description: string;
@@ -26,22 +28,24 @@ interface SelectItem {
   styleUrls: ['./app.component.scss'],
 })
 export class AppComponent {
+  @ViewChild('tbl', { static: true })
+  tbl!: Table;
   title = 'formArrayWithPrimeTable';
-
-  products: Product[] = [];
-
   statuses: SelectItem[] = [];
+  clonedProducts: any = {};
 
-  clonedProducts: { [s: string]: Product } = {};
-
-  constructor(private messageService: MessageService) {}
-
+  formData: FormGroup;
+  constructor(private messageService: MessageService) {
+    this.formData = new FormGroup({
+      products: new FormArray([]),
+    });
+  }
   ngOnInit() {
     new Observable<Product[]>((obs) => {
-      timer(1000).subscribe(() => {
+      timer(2000).subscribe(() => {
         obs.next([
           {
-            id: '1000',
+            id: 1,
             code: 'f230fh0g3',
             name: 'Bamboo Watch',
             description: 'Product Description',
@@ -52,10 +56,22 @@ export class AppComponent {
             inventoryStatus: 'INSTOCK',
             rating: 5,
           },
+          {
+            id: 2,
+            code: 'f230fh0g3',
+            name: 'B Phone',
+            description: 'BKAV',
+            image: 'BPhone.jpg',
+            price: 65,
+            category: 'Smartphone',
+            quantity: 30,
+            inventoryStatus: 'INSTOCK',
+            rating: 5,
+          },
         ]);
       });
     }).subscribe((data: Product[]) => {
-      this.products = data;
+      for (var item of data) this.addProduct(item);
     });
     this.statuses = [
       { label: 'In Stock', value: 'INSTOCK' },
@@ -64,13 +80,15 @@ export class AppComponent {
     ];
   }
 
-  onRowEditInit(product: Product) {
-    this.clonedProducts[product.id] = { ...product };
+  onRowEditInit(control: FormGroup) {
+    this.clonedProducts[control.get('id')?.value as any] = {
+      ...control.value,
+    };
   }
 
-  onRowEditSave(product: Product) {
-    if (product.price > 0) {
-      delete this.clonedProducts[product.id];
+  onRowEditSave(control: FormControl) {
+    if (control.value.price > 0) {
+      delete this.clonedProducts[control.value.id];
       this.messageService.add({
         severity: 'success',
         summary: 'Success',
@@ -85,8 +103,33 @@ export class AppComponent {
     }
   }
 
-  onRowEditCancel(product: Product, index: number) {
-    this.products[index] = this.clonedProducts[product.id];
-    delete this.clonedProducts[product.id];
+  onRowEditCancel(control: FormControl, index: number) {
+    (this.formData.controls['products'] as FormArray)
+      .at(index)
+      ?.patchValue(this.clonedProducts[control.value.id]);
+    delete this.clonedProducts[control.value.id];
+  }
+
+  addProduct(item?: Product, isEdit: boolean = false) {
+    const id = item?.id || Math.floor(Math.random() * 1000000);
+    if (isEdit) this.tbl.editingRowKeys[id as string] = true;
+    (this.formData.controls['products'] as FormArray).push(
+      new FormGroup({
+        id: new FormControl(id),
+        code: new FormControl(item?.code),
+        name: new FormControl(item?.name),
+        description: new FormControl(item?.description),
+        image: new FormControl(item?.image),
+        price: new FormControl(item?.price),
+        category: new FormControl(item?.category),
+        quantity: new FormControl(item?.quantity),
+        inventoryStatus: new FormControl(item?.inventoryStatus),
+        rating: new FormControl(item?.rating),
+      })
+    );
+  }
+
+  handleSubmit() {
+    console.log(this.formData.value);
   }
 }
